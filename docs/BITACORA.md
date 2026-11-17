@@ -45,3 +45,61 @@ para analizar su escalabilidad.
 
 **Por qué:** separar por responsabilidad hace el repo ordenado y fácil de
 evaluar, y coincide con el formato de entrega pedido.
+
+
+## 4. Incidente: error 403 al hacer el primer push
+
+**Qué pasó:** `git push` devolvió `403 Permission denied` aunque el usuario era
+correcto.
+
+**Causa:** el token de acceso personal no tenía el permiso (scope) `repo`.
+
+**Solución:** se creó un token nuevo de tipo *classic* con el scope `repo`.
+Clonar un repo público no pide credenciales; solo el `push` las exige.
+
+**Lección:** los tokens nunca se pegan en chats ni en el repositorio. Si se
+expone uno, se revoca de inmediato.
+
+## 5. Paso 3: Diseño de la aplicación de citas médicas
+
+### Requisitos del proyecto que la app debe cumplir
+- Backend con lógica significativa.
+- API REST (para poder probarla con JMeter).
+- Persistencia en base de datos.
+- Mínimo 10.000 registros.
+
+### Tecnologías elegidas
+| Tecnología | Para qué |
+|------------|----------|
+| Python + FastAPI | Backend y API REST, con documentación automática |
+| PostgreSQL | Base de datos relacional |
+| Docker / Docker Compose | Empaquetado y despliegue en Fase 1 |
+| Kubernetes | Despliegue escalable en Fases 2, 3 y 4 |
+
+**Por qué:** FastAPI es sencillo y rápido; PostgreSQL es robusta y muy usada
+con contenedores; ambos se despliegan fácilmente en Docker y Kubernetes.
+
+### Entidades (tablas)
+- **Pacientes:** nombre, documento, teléfono, correo.
+- **Médicos:** nombre, especialidad.
+- **Citas:** paciente, médico, fecha y hora, motivo, estado
+  (programada, cancelada, completada).
+
+### Endpoints REST
+| Método | Ruta | Función |
+|--------|------|---------|
+| GET | /citas | Listar citas (con filtros) |
+| GET | /citas/{id} | Ver una cita |
+| POST | /citas | Crear cita |
+| PUT | /citas/{id} | Actualizar cita |
+| DELETE | /citas/{id} | Eliminar cita |
+| GET/POST/PUT/DELETE | /pacientes, /medicos | CRUD equivalente |
+| GET | /health | Verificación de salud (Kubernetes) |
+
+### Lógica de negocio
+- Un médico no puede tener dos citas en la misma fecha y hora.
+- Las citas se pueden filtrar por médico, paciente, fecha y estado.
+
+### Datos de prueba
+Un script cargará más de 10.000 registros (citas, pacientes y médicos) para
+cumplir el requisito y hacer significativas las pruebas de carga.
