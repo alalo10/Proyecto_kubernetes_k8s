@@ -1,0 +1,81 @@
+# PostgreSQL de la app de citas medicas.
+# Siempre 1 replica y fijado al portatil de Angela (nodo Zorin), para que la base de datos
+# no cambie de nodo entre escenarios y no caiga en una VM de 1 CPU.
+# Las credenciales son las mismas de prueba que ya estan en docker/docker-compose.yml.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: citas-db-credenciales
+  namespace: citas
+type: Opaque
+stringData:
+  POSTGRES_USER: citas_user
+  POSTGRES_PASSWORD: citas_pass
+  POSTGRES_DB: citas_db
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: citas-db-datos
+  namespace: citas
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: citas-db
+  namespace: citas
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: citas-db
+  template:
+    metadata:
+      labels:
+        app: citas-db
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: juanpa-hp-laptop-14-ep1xxx
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: citas-db-credenciales
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: datos
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "citas_user", "-d", "citas_db"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: datos
+          persistentVolumeClaim:
+            claimName: citas-db-datos
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: citas-db
+  namespace: citas
+spec:
+  type: ClusterIP
+  selector:
+    app: citas-db
+  ports:
+    - port: 5432
+      targetPort: 5432
