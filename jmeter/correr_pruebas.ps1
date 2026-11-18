@@ -72,8 +72,17 @@ function Invoke-Prueba {
         "-Jduracion=$DuracionSeg"
     )
 
-    & $JMeter @argumentos 2>&1 | Where-Object { $_ -match "summary =" } | ForEach-Object { Write-Host "  $_" }
-    if ($LASTEXITCODE -ne 0) { throw "JMeter termino con codigo $LASTEXITCODE" }
+    # Java escribe avisos inofensivos por stderr (p. ej. "WARNING: sun.misc.Unsafe...").
+    # Con "Stop", PowerShell los trataria como errores graves, asi que aqui se usa "Continue".
+    $previo = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $JMeter @argumentos 2>&1 |
+        ForEach-Object { $_.ToString() } |
+        Where-Object { $_ -match "summary =" } |
+        ForEach-Object { Write-Host "  $_" }
+    $codigo = $LASTEXITCODE
+    $ErrorActionPreference = $previo
+    if ($codigo -ne 0) { throw "JMeter termino con codigo $codigo" }
 }
 
 Write-Host "=== Escenario: $Escenario ===" -ForegroundColor Cyan
